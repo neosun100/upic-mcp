@@ -1,0 +1,24 @@
+[project]
+name = "upic-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "e2e: end-to-end tests that invoke the real uPic CLI and hit the real image host (opt-in via -m e2e)",
+]
+# By default skip e2e; run them with `uv run pytest -m e2e` or `-m 'unit or integration or e2e'`.
+addopts = "-ra -m 'not e2e'"
