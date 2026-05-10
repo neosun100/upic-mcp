@@ -39,7 +39,8 @@ Five MCP tools, production-tested with 44 automated tests:
 - 🌍 **Works with all 12 uPic hosts** — Qiniu KODO / UPYUN / Aliyun OSS / Tencent COS / Amazon S3 / Imgur / GitHub / Gitee / SMMS / Weibo / Baidu BOS / custom.
 - 🗜 **Compression is automatic** — whatever you set in the UI (e.g. "Compress to 90% quality") is applied to MCP uploads too, because both paths go through `BaseUploaderUtil.compressImage`.
 - 📦 **Sandbox-safe** — uPic's sandbox can only read files under a whitelisted set of prefixes. This server detects that and transparently stages out-of-whitelist files.
-- 🧪 **Well-tested** — 21 unit + 17 integration + 6 end-to-end tests. Default `pytest` runs in <1s fully offline; `pytest -m e2e` runs 6 real round-trip uploads in ~15s.
+- 🛡 **Security-hardened** — filename path traversal is blocked (basename sanitization), staging files are auto-cleaned on upload failure, and secrets never appear in tool output. See the [Security](#security) section for the full threat model.
+- 🧪 **Well-tested** — 34 unit + 17 integration + 9 end-to-end tests (60 total). Default `pytest` runs in ~0.5s fully offline; `pytest -m e2e` runs 9 real round-trip uploads in ~30s.
 - 🪶 **Zero-config** — reads your existing uPic configuration directly from `~/Library/Containers/com.svend.uPic.macos/Data/Library/Preferences/com.svend.uPic.macos.plist`.
 
 ## Requirements
@@ -190,22 +191,101 @@ The `quality_factor` field in tool results maps to uPic's **"Compress images bef
 - JPGs use `NSBitmapImageRep.compressionFactor`
 - Other formats (GIF, WebP, SVG, PDF, …) pass through uncompressed
 
+## Configuration
+
+The server ships with zero-config by design — it reads everything from your
+existing uPic UI settings. For non-standard installs, one environment variable
+is supported:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `UPIC_BINARY` | `/Applications/uPic.app/Contents/MacOS/uPic` | Path to the uPic executable. Set this if you built uPic from source, moved the app to a non-standard location, or are running an unsigned developer build. |
+
+Set it in your MCP client's server config under `env`:
+
+```json
+{
+  "mcpServers": {
+    "upic": {
+      "command": "/path/to/upic-mcp/.venv/bin/python",
+      "args": ["/path/to/upic-mcp/server.py"],
+      "env": {
+        "UPIC_BINARY": "/Users/me/build/uPic.app/Contents/MacOS/uPic"
+      }
+    }
+  }
+}
+```
+
+All other settings (default host, image quality, save-key path, output format)
+come from uPic's UI directly. Change them in the menu bar app and the next MCP
+upload picks them up automatically — no server restart needed.
+
+## Security
+
+This server runs locally and never opens a listening socket. Security
+considerations focus on three threat surfaces:
+
+### 1. Filename path traversal (mitigated)
+
+`upload_image_from_base64` accepts an optional `filename` argument that
+controls the local staging path. The filename is sanitized to a **basename
+only** (`Path(filename).name` + leading-dot stripping) so calls like:
+
+```json
+{"data": "...", "filename": "../../etc/passwd"}
+```
+
+cannot write outside `~/.upic-staging/`. The attempt becomes a staged file
+named `passwd`, not a traversal. Empty / dotted-only filenames fall back to
+`image.png`. Covered by 4 unit tests and 1 end-to-end test.
+
+### 2. Command injection (not applicable)
+
+The uPic CLI is invoked via `subprocess.run(cmd, ...)` with `cmd` as a **list**
+of arguments — no shell is involved. File paths and filenames flow through
+as opaque argv values; shell metacharacters (`;`, `` ` ``, `$(…)`, `|`, etc.)
+cannot be interpreted. No `shell=True` appears anywhere in the codebase.
+
+### 3. Secrets exposure (mitigated)
+
+uPic stores host credentials (access keys, secret keys, client IDs) in its
+`UserDefaults` plist. The `list_hosts` tool strips the `data` field entirely
+before returning, so only `id`, `name`, and `type` are ever exposed. A unit
+test asserts that known-secret markers cannot appear in the tool's output.
+
+### Additional hardening
+
+- **Staging cleanup on failure.** When `upload_image_from_base64` fails, the
+  staging file we created is unlinked so bytes don't accumulate in
+  `~/.upic-staging/`. User-supplied file paths are never modified or deleted,
+  even on failure — an integration test pins this invariant.
+- **Subprocess timeout.** Every `_run_upic` call has a 120-second timeout;
+  a hung uPic CLI cannot block the MCP server indefinitely.
+- **No network code.** The MCP server itself never opens a socket. All
+  outbound traffic is uPic's own HTTPS upload to the image host.
+
+### Filesystem footprint
+
+```
+~/.upic-staging/            Staging directory (auto-created, content-hash dedup)
+~/.kiro/settings/mcp.json   Where Kiro learns about this server (you add the entry)
+```
+
+The server never writes anywhere else on disk. Uninstalling is just deleting
+the `upic-mcp/` folder and the `~/.upic-staging/` directory.
+
 ## Testing
 
 <p align="center">
-  <img src="https://img.aws.xin/uPic/test-pyramid.png" alt="Three-layer test pyramid: 21 unit + 17 integration + 6 e2e = 44 tests total" style="width:100%;max-width:720px" />
+  <img src="https://img.aws.xin/uPic/test-pyramid.png" alt="Three-layer test pyramid: 34 unit + 17 integration + 9 e2e = 60 tests total" style="width:100%;max-width:720px" />
 </p>
-
-> The pyramid diagram above reflects the v0.1.0 baseline (44 tests). The current
-> suite has grown to **60 tests** (34 unit + 17 integration + 9 e2e) after the
-> security / robustness hardening pass. All counts and commands below are
-> current.
 
 ```bash
 # Fast, offline, runs in ~0.5s
 uv run pytest                      # 51 passed (9 e2e deselected)
 
-# Real uploads to your CDN, ~15s
+# Real uploads to your CDN, ~30s
 uv run pytest -m e2e -v            # 9 passed
 
 # Everything
@@ -279,10 +359,56 @@ That's expected. `quality_factor` is a **quality** setting, not a size-reduction
 E2E tests require uPic.app to be installed and at least one host configured. CI should run `uv run pytest` (without `-m e2e`), which excludes the e2e suite via the default `addopts` in `pyproject.toml`.
 </details>
 
+<details>
+<summary><strong>Two uPic icons in the menu bar after development / testing</strong></summary>
+
+This happens when uPic is accidentally launched without a `-u` argument — the CLI branch only activates for commands like `uPic -u file.png -o url`. Anything else (including `uPic --help`, `uPic --version`, or a bare `uPic`) falls through to UI mode and spawns a second menu-bar instance.
+
+**MCP uploads never cause this** — `server.py` always invokes `uPic` with `-u`. The duplicate usually comes from manually probing the CLI in a terminal.
+
+**Check & cleanup:**
+
+```bash
+# How many uPic processes are running?
+ps aux | grep -iE "/uPic" | grep -v grep
+
+# Should be 1. If more, identify the stale PID (older START time or a
+# --help-style command) and kill it:
+kill -9 <PID>
+```
+
+The menu bar refreshes on the next click.
+</details>
+
+<details>
+<summary><strong>Using a non-standard uPic.app location</strong></summary>
+
+Set the `UPIC_BINARY` environment variable in the server's MCP config:
+
+```json
+{
+  "upic": {
+    "command": "/path/to/.venv/bin/python",
+    "args": ["/path/to/server.py"],
+    "env": {
+      "UPIC_BINARY": "/Users/me/build/uPic.app/Contents/MacOS/uPic"
+    }
+  }
+}
+```
+
+Also see the [Configuration](#configuration) section.
+</details>
+
 ## Roadmap
 
-This project is the `upload-only` MVP. Planned expansion in rough priority order:
+The MVP upload pipeline is production-hardened with 60 passing tests. Planned
+expansion in rough priority order:
 
+- [x] ~~Upload by path, base64, and automatic sandbox staging~~ (v0.1.0)
+- [x] ~~`list_hosts`, `get_default_host`, `uploader_info`~~ (v0.1.0)
+- [x] ~~Environment-variable override for `UPIC_BINARY`~~ (hardening pass)
+- [x] ~~Path-traversal protection for base64 filenames~~ (hardening pass)
 - [ ] `set_default_host(name_or_id)` — switch uPic's default host from agent
 - [ ] `set_compress_factor(factor)` — change quality without the menu bar
 - [ ] `get_upload_history(limit, host?)` — read the WCDB history database directly

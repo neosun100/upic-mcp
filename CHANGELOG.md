@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- README: new **Security** section documenting the three-surface threat model
+  (filename path traversal, command injection non-applicability, secrets
+  exposure) and additional hardening measures (staging cleanup, subprocess
+  timeout, no network sockets).
+- README: new **Configuration** section documenting the `UPIC_BINARY`
+  environment variable for non-standard uPic installs.
+- README: Highlights list updated with a **"Security-hardened"** bullet.
+- README: Troubleshooting section got two new entries — "Two uPic icons in
+  the menu bar" and "Using a non-standard uPic.app location".
+- README: Roadmap checklist now marks completed items (core upload,
+  list/info tools, `UPIC_BINARY` override, path-traversal protection).
+- README: test counts and runtime numbers updated to reflect the 60-test
+  suite (34 unit + 17 integration + 9 e2e).
+- `docs/test-pyramid.svg` redrawn with new numbers (34 / 17 / 9 / 60),
+  updated commands, and updated side labels. Re-rendered to 2× PNG and
+  re-uploaded to the CDN (URL unchanged).
+
 ### Security
 
 - **Path traversal protection** in `upload_image_from_base64`: the `filename`
