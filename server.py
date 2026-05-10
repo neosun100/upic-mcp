@@ -32,7 +32,12 @@ from mcp.server.fastmcp import FastMCP
 
 # --- constants ---------------------------------------------------------------
 
-UPIC_BINARY = "/Applications/uPic.app/Contents/MacOS/uPic"
+# Location of the uPic binary. Overridable with the UPIC_BINARY env var so that
+# users with a non-standard install (e.g. developer signing, /Applications
+# moved) can still run this server without patching the source.
+UPIC_BINARY = os.environ.get(
+    "UPIC_BINARY", "/Applications/uPic.app/Contents/MacOS/uPic"
+)
 UPIC_BUNDLE_ID = "com.svend.uPic.macos"
 STAGING_DIR = Path.home() / ".upic-staging"
 # Paths uPic's sandbox has valid bookmarks for. Anything outside gets staged.
@@ -156,7 +161,9 @@ def _stage_file(src: Path) -> Path:
 
 
 def _extract_url(stdout: str) -> str | None:
-    """uPic CLI stdout looks like:
+    """Extract uPic's uploaded URL from CLI stdout.
+
+    uPic CLI stdout looks like::
 
         共 1 个文件路径和链接
         Uploading ...
@@ -164,7 +171,13 @@ def _extract_url(stdout: str) -> str | None:
         Output URL:
         https://img.aws.xin/uPic/foo.png
 
-    Return the first line after the 'Output URL:' marker that looks like a URL.
+    Return the first non-empty line after the ``Output URL:`` marker. That
+    line is usually a URL (``http://`` / ``https://``). When upload failed and
+    the CLI was not running in ``--slient`` mode, the line instead contains a
+    human-readable error message (e.g. ``"Invalid file path"``). We return the
+    raw line either way; the caller (``_upload_path``) is responsible for
+    distinguishing the two cases and raising an informative error when the
+    line is not a URL.
     """
     lines = [l.rstrip() for l in stdout.splitlines()]
     found_marker = False
@@ -173,10 +186,8 @@ def _extract_url(stdout: str) -> str | None:
             stripped = line.strip()
             if not stripped:
                 continue
-            if stripped.startswith(("http://", "https://")):
-                return stripped
-            # If it's not a URL after the marker, uPic returned an error message
-            # (e.g. "Invalid file path"). Surface it as the url so caller sees it.
+            # Whether it's a URL or an error message, return the line verbatim
+            # and let the caller decide what to do.
             return stripped
         if line.startswith("Output URL:"):
             found_marker = True
@@ -201,7 +212,23 @@ def _upload_path(path: Path) -> UploadResult:
 
     staged_from: str | None = None
     upload_path = path
-    if _needs_staging(path):
+
+    # If the file is already inside our staging directory, don't stage it
+    # again — that would produce a double-prefixed file (``hash_hash_name``)
+    # and leak copies. This matters when STAGING_DIR itself lives outside the
+    # sandbox whitelist (only happens in tests via monkeypatch, but still a
+    # correctness invariant worth enforcing).
+    try:
+        staging_resolved = str(STAGING_DIR.resolve())
+        path_resolved = str(path.resolve())
+        already_in_staging = (
+            path_resolved == staging_resolved
+            or path_resolved.startswith(staging_resolved + os.sep)
+        )
+    except (OSError, ValueError):
+        already_in_staging = False
+
+    if not already_in_staging and _needs_staging(path):
         staged_from = str(path)
         upload_path = _stage_file(path)
 
@@ -280,7 +307,10 @@ def upload_image_from_base64(
 
     Args:
         data: Base64-encoded bytes. ``data:image/png;base64,`` prefix is OK.
-        filename: Filename hint (controls extension / CDN key). Defaults to ``image.png``.
+        filename: Filename hint (controls extension / CDN key). Only the
+            basename is used — any path components are stripped to prevent
+            directory traversal (``../../etc/passwd`` becomes ``passwd``).
+            Defaults to ``image.png``.
     """
     # Strip data-URL prefix if the caller pasted one.
     if "," in data and data.lstrip().startswith("data:"):
@@ -292,13 +322,26 @@ def upload_image_from_base64(
     if not raw:
         return {"error": "empty payload"}
 
+    # Sanitize filename: only allow the basename, strip path components and
+    # any separators. Empty / dotted-only filenames fall back to a safe default.
+    safe_name = Path(filename).name if filename else ""
+    safe_name = safe_name.lstrip(".")  # block ".hidden" or ".."
+    if not safe_name:
+        safe_name = "image.png"
+
     STAGING_DIR.mkdir(parents=True, exist_ok=True)
     # Prefix with short content hash so repeated uploads of same bytes dedupe.
     h = hashlib.sha1(raw).hexdigest()[:8]
-    tmp = STAGING_DIR / f"{h}_{filename}"
+    tmp = STAGING_DIR / f"{h}_{safe_name}"
     tmp.write_bytes(raw)
 
-    result = _upload_path(tmp)
+    try:
+        result = _upload_path(tmp)
+    except Exception:
+        # We created this staging file ourselves (not user-supplied), so on
+        # failure clean it up to avoid orphaning bytes in ~/.upic-staging/.
+        tmp.unlink(missing_ok=True)
+        raise
     return _result_to_dict(result)
 
 

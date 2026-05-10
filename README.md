@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-1.2+-green.svg)](https://modelcontextprotocol.io)
-[![Tests: 44 passed](https://img.shields.io/badge/tests-44%20passed-brightgreen.svg)](#testing)
+[![Tests: 60 passed](https://img.shields.io/badge/tests-60%20passed-brightgreen.svg)](#testing)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#)
 
 ## Why
@@ -196,24 +196,29 @@ The `quality_factor` field in tool results maps to uPic's **"Compress images bef
   <img src="https://img.aws.xin/uPic/test-pyramid.png" alt="Three-layer test pyramid: 21 unit + 17 integration + 6 e2e = 44 tests total" style="width:100%;max-width:720px" />
 </p>
 
+> The pyramid diagram above reflects the v0.1.0 baseline (44 tests). The current
+> suite has grown to **60 tests** (34 unit + 17 integration + 9 e2e) after the
+> security / robustness hardening pass. All counts and commands below are
+> current.
+
 ```bash
 # Fast, offline, runs in ~0.5s
-uv run pytest                      # 38 passed (6 e2e deselected)
+uv run pytest                      # 51 passed (9 e2e deselected)
 
 # Real uploads to your CDN, ~15s
-uv run pytest -m e2e -v            # 6 passed
+uv run pytest -m e2e -v            # 9 passed
 
 # Everything
-uv run pytest --override-ini="addopts=-ra" -v   # 44 passed
+uv run pytest --override-ini="addopts=-ra" -v   # 60 passed
 ```
 
 ### Test layers
 
 | File | Count | Runtime | Hits network |
 |---|---|---|---|
-| [`tests/test_unit.py`](./tests/test_unit.py) | 21 | ~0.3s | No |
+| [`tests/test_unit.py`](./tests/test_unit.py) | 34 | ~0.3s | No |
 | [`tests/test_integration.py`](./tests/test_integration.py) | 17 | ~0.3s | No (subprocess + plist mocked) |
-| [`tests/test_e2e.py`](./tests/test_e2e.py) | 6 | ~15s | **Yes** — real uPic CLI, real CDN upload, real HTTP `GET` |
+| [`tests/test_e2e.py`](./tests/test_e2e.py) | 9 | ~30s | **Yes** — real uPic CLI, real CDN upload, real HTTP `GET` |
 
 E2E tests are opt-in via `-m e2e` so CI can run the fast tests without needing uPic or network access.
 

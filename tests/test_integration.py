@@ -183,13 +183,14 @@ class TestUploadImageFromBase64:
         staged.unlink(missing_ok=True)
 
     def test_invalid_base64_returns_error(self, defaults_patch):
-        # Python's base64 decoder in non-validating mode is lenient — feed it a type
-        # that will actually blow up (raw binary that's not ASCII).
+        # Feed a string that is not valid base64 under any tolerance. Python's
+        # b64decode will fail when it tries to interpret non-ASCII as the
+        # base64 alphabet.
         with patch.object(S, "_run_upic") as mock_cli:
-            out = S.upload_image_from_base64(b"\xff\xfe".decode("latin-1"), "x.png")
-        # Either error path (invalid / empty) is acceptable; just make sure we
-        # didn't reach the CLI.
-        assert "error" in out or ("url" in out and mock_cli.called)
+            out = S.upload_image_from_base64("不是合法的base64字符串！@#$%", "x.png")
+        assert "error" in out, f"expected error payload, got: {out}"
+        assert "base64" in out["error"].lower() or "empty" in out["error"].lower()
+        mock_cli.assert_not_called(), "CLI must not run when decode fails"
 
     def test_empty_payload_returns_error(self, defaults_patch):
         out = S.upload_image_from_base64("", "x.png")
@@ -255,3 +256,84 @@ class TestUploaderInfo:
         monkeypatch.setattr(S, "UPIC_BINARY", "/nonexistent/uPic")
         info = S.uploader_info()
         assert info["upic_binary_exists"] is False
+
+
+# --- list_hosts edge cases ---------------------------------------------------
+
+
+class TestListHostsEdgeCases:
+    def test_no_default_host_set(self):
+        # Empty defaults — no hosts, no default ID.
+        with patch.object(S, "_read_upic_defaults", return_value={}):
+            result = S.list_hosts()
+        assert result["count"] == 0
+        assert result["hosts"] == []
+
+    def test_hosts_configured_but_no_default(self):
+        # Edge case: hosts exist but no `uPic_DefaultHostId` key.
+        defaults = {
+            "uPic_hostItems": ['{"id":"x","name":"X","type":"s3"}'],
+        }
+        with patch.object(S, "_read_upic_defaults", return_value=defaults):
+            result = S.list_hosts()
+        assert result["count"] == 1
+        # No host should be marked as default.
+        assert all(h["is_default"] is False for h in result["hosts"])
+
+
+# --- subprocess timeout / failure -------------------------------------------
+
+
+class TestSubprocessFailures:
+    """Verify we degrade gracefully when the uPic subprocess misbehaves."""
+
+    def test_timeout_raises_rather_than_hangs(self, defaults_patch):
+        # Simulate a hung uPic: _run_upic raises TimeoutExpired.
+        import subprocess as sp
+        home_file = Path.home() / "_upic_it_test_timeout.png"
+        home_file.write_bytes(b"x")
+        try:
+            with patch.object(
+                S, "_run_upic",
+                side_effect=sp.TimeoutExpired(cmd=[S.UPIC_BINARY], timeout=120),
+            ):
+                with pytest.raises(sp.TimeoutExpired):
+                    S.upload_image(str(home_file))
+        finally:
+            home_file.unlink(missing_ok=True)
+
+    def test_base64_upload_cleans_up_staging_on_failure(self, tmp_path, monkeypatch, defaults_patch):
+        # When uPic fails, the staging file this tool created should be cleaned
+        # up rather than orphaned in ~/.upic-staging/.
+        import base64 as b64
+        monkeypatch.setattr(S, "STAGING_DIR", tmp_path)
+
+        data = b64.b64encode(b"CLEANUP-TEST-BYTES").decode()
+        # Stub _run_upic to simulate an upload failure that reaches _upload_path.
+        def _fake_failure(paths):
+            return "Output URL:\nInvalid file path\n", ""
+
+        with patch.object(S, "_run_upic", side_effect=_fake_failure):
+            with pytest.raises(RuntimeError):
+                S.upload_image_from_base64(data, "cleanup.png")
+
+        # After failure, staging directory should be empty.
+        remaining = list(tmp_path.iterdir())
+        assert remaining == [], f"expected staging cleanup, found: {remaining}"
+
+    def test_path_upload_does_NOT_delete_user_file_on_failure(self, defaults_patch):
+        # If the user passes a real file path and upload fails, we must NOT
+        # delete their file (it's their data, not our staging).
+        home_file = Path.home() / "_upic_it_test_nodelete.png"
+        home_file.write_bytes(b"USER-DATA")
+        try:
+            def _fake_failure(paths):
+                return "Output URL:\nError\n", ""
+            with patch.object(S, "_run_upic", side_effect=_fake_failure):
+                with pytest.raises(RuntimeError):
+                    S.upload_image(str(home_file))
+            # User's file must still exist and be unchanged.
+            assert home_file.exists()
+            assert home_file.read_bytes() == b"USER-DATA"
+        finally:
+            home_file.unlink(missing_ok=True)

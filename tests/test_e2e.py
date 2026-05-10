@@ -174,3 +174,56 @@ class TestRealUpload:
         assert 1 <= factor <= 100
         expected_enabled = factor < 100
         assert result["compression_enabled"] is expected_enabled
+
+    def test_upload_filename_with_spaces(self, tmp_path):
+        # Filenames with spaces must round-trip correctly through the CLI
+        # (list-form subprocess.run means no shell escaping is needed, but we
+        # still want an explicit test to guarantee nothing else mangles it).
+        tag = uuid.uuid4().bytes
+        path = Path.home() / f"upic e2e space {uuid.uuid4().hex[:8]}.png"
+        path.write_bytes(_make_png(32, 24, tag))
+        try:
+            result = S.upload_image(str(path))
+            assert "url" in result, result
+            r = httpx.get(result["url"], follow_redirects=True, timeout=15)
+            assert r.status_code == 200
+            assert len(r.content) > 0
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_upload_filename_with_unicode(self):
+        # Chinese / emoji characters in the filename. uPic's Swift string
+        # handling is Unicode-native, but network/CDN key encoding can trip
+        # up if we're not careful.
+        tag = uuid.uuid4().bytes
+        path = Path.home() / f"upic测试_{uuid.uuid4().hex[:6]}.png"
+        path.write_bytes(_make_png(32, 24, tag))
+        try:
+            result = S.upload_image(str(path))
+            assert "url" in result, result
+            # The URL might URL-encode the Chinese characters or keep them raw;
+            # either is valid — what matters is the URL is reachable.
+            r = httpx.get(result["url"], follow_redirects=True, timeout=15)
+            assert r.status_code == 200
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_base64_with_traversal_filename_still_works(self):
+        # Real E2E: even if the caller tries a path-traversal filename, we
+        # sanitize to basename and still successfully upload.
+        import base64 as b64
+        tag = uuid.uuid4().bytes
+        png_bytes = _make_png(16, 16, tag)
+        data = b64.b64encode(png_bytes).decode()
+        malicious_name = f"../../../../upic_traversal_{uuid.uuid4().hex[:8]}.png"
+
+        result = S.upload_image_from_base64(data, malicious_name)
+        assert "url" in result, result
+        # Resulting URL's filename should NOT contain any path separators.
+        from urllib.parse import urlparse, unquote
+        url_path = unquote(urlparse(result["url"]).path)
+        filename_in_url = url_path.split("/")[-1]
+        assert ".." not in filename_in_url
+        # And the upload should be live.
+        r = httpx.get(result["url"], follow_redirects=True, timeout=15)
+        assert r.status_code == 200

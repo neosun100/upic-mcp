@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Path traversal protection** in `upload_image_from_base64`: the `filename`
+  argument is now sanitized to a basename (`Path(filename).name`) with leading
+  dots stripped, blocking `../../etc/passwd`-style escapes from writing
+  outside `~/.upic-staging/`. Empty / dotted-only filenames fall back to
+  `image.png`.
+- `upload_image_from_base64` now cleans up its own staging file when the
+  upload fails (previously the orphaned bytes stayed in `~/.upic-staging/`
+  forever). User-supplied files are never touched on failure.
+
+### Fixed
+
+- **Double-staging bug**: `_upload_path` previously re-staged files that were
+  already inside `STAGING_DIR`, producing double-prefixed names like
+  `hash_hash_file.png`. It now detects files already in staging and skips
+  re-staging. Invisible in production (default `~/.upic-staging/` is in
+  `$HOME` whitelist) but caught by a new integration test.
+- `_extract_url` docstring previously claimed it "surfaces error messages as
+  URLs". That was misleading — the caller always converts non-URL lines to
+  `RuntimeError`. Docstring now accurately describes the two return cases.
+- `pyproject.toml` had the placeholder `"Add your description here"`. Fixed.
+- Removed the `uv init` scaffolding file `main.py` (`print("Hello from upic-mcp!")`).
+
+### Added
+
+- `UPIC_BINARY` environment variable override (defaults to
+  `/Applications/uPic.app/Contents/MacOS/uPic` as before). Useful for
+  developer builds or non-standard install locations.
+- **16 new tests** covering newly hardened paths:
+  - Unit: `_extract_url` edge cases (mid-line marker, CRLF, marker-only),
+    `UPIC_BINARY` env override, 4 filename sanitization tests.
+  - Integration: 2 `list_hosts` edge cases (no default host, no hosts at
+    all), subprocess timeout behavior, staging cleanup on base64 upload
+    failure, user-file-not-deleted-on-failure invariant, tightened
+    invalid-base64 assertion.
+  - E2E: filenames with spaces, filenames with Chinese characters, base64
+    upload with traversal-attempt filename (upload still succeeds with
+    sanitized basename).
+  - Total: **60 tests, all passing** (was 44 in v0.1.0).
+
 ### Added
 
 - Three hand-drawn SVG architecture diagrams under `docs/`, rendered at 2× resolution and hosted on CDN:

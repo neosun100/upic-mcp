@@ -1,7 +1,7 @@
 [project]
 name = "upic-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP server that wraps the installed uPic.app (macOS) so AI agents can upload images and get back stable CDN URLs."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

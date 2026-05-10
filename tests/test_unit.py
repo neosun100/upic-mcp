@@ -181,3 +181,135 @@ class TestResultToDict:
             host_name="H", compress_factor=100, elapsed_ms=1,
         )
         assert S._result_to_dict(r)["compression_enabled"] is False
+
+
+# --- _extract_url edge cases ------------------------------------------------
+
+
+class TestExtractURLEdgeCases:
+    def test_marker_mid_line_not_matched(self):
+        # "Output URL:" must be at the start of a line to count as the marker.
+        stdout = "some prefix Output URL: https://x.y/z.png"
+        assert S._extract_url(stdout) is None
+
+    def test_crlf_line_endings(self):
+        stdout = "Output URL:\r\nhttps://img.aws.xin/uPic/crlf.png\r\n"
+        assert S._extract_url(stdout) == "https://img.aws.xin/uPic/crlf.png"
+
+    def test_only_marker_no_following_line(self):
+        # CLI crashed right after printing the marker — no URL line at all.
+        assert S._extract_url("Output URL:\n") is None
+
+
+# --- UPIC_BINARY env-var override -------------------------------------------
+
+
+class TestBinaryOverride:
+    def test_env_var_overrides_default_path(self, monkeypatch):
+        # Reload server module with env var set so the module-level constant picks it up.
+        monkeypatch.setenv("UPIC_BINARY", "/opt/custom/uPic")
+        import importlib
+        import server as fresh_s
+        reloaded = importlib.reload(fresh_s)
+        try:
+            assert reloaded.UPIC_BINARY == "/opt/custom/uPic"
+        finally:
+            # Restore normal binary for subsequent tests.
+            monkeypatch.delenv("UPIC_BINARY", raising=False)
+            importlib.reload(fresh_s)
+
+
+# --- Path sanitization (filename arg for base64 upload) ---------------------
+
+
+class TestFilenameSanitization:
+    """Ensure upload_image_from_base64 can't write outside STAGING_DIR.
+
+    These tests don't actually invoke the CLI — they stop before _run_upic by
+    verifying what path the staged file was written to.
+    """
+
+    def test_path_traversal_segments_stripped(self, tmp_path, monkeypatch):
+        # Redirect STAGING_DIR to a tmp location so we never touch real $HOME.
+        monkeypatch.setattr(S, "STAGING_DIR", tmp_path)
+        import base64 as b64
+        from unittest.mock import patch
+
+        data = b64.b64encode(b"test-bytes").decode()
+        # Intercept _upload_path so we can inspect the staged file without
+        # invoking the real uPic CLI (and without triggering our failure
+        # cleanup path).
+        captured_paths = []
+        def _capture(p):
+            captured_paths.append(p)
+            return S.UploadResult(
+                url="https://x/y.png", source=str(p), staged_from=None,
+                size_bytes=p.stat().st_size, host_name="H",
+                compress_factor=100, elapsed_ms=1,
+            )
+        with patch.object(S, "_upload_path", side_effect=_capture):
+            S.upload_image_from_base64(data, filename="../../etc/passwd")
+
+        # Key assertion: whatever file got created lives directly in tmp_path,
+        # NOT in a parent directory of tmp_path.
+        assert len(captured_paths) == 1
+        staged = captured_paths[0]
+        assert staged.parent == tmp_path, \
+            f"staged file escaped STAGING_DIR! Parent was: {staged.parent}"
+        assert ".." not in staged.name
+        assert "/" not in staged.name
+        # The staged file should end with just "passwd" (the basename).
+        assert staged.name.endswith("passwd")
+
+    def test_absolute_path_in_filename_stripped(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(S, "STAGING_DIR", tmp_path)
+        import base64 as b64
+        from unittest.mock import patch
+
+        data = b64.b64encode(b"x").decode()
+        captured = []
+        def _cap(p):
+            captured.append(p)
+            return S.UploadResult(url="https://x/y", source=str(p), staged_from=None,
+                                  size_bytes=1, host_name=None, compress_factor=100, elapsed_ms=1)
+        with patch.object(S, "_upload_path", side_effect=_cap):
+            S.upload_image_from_base64(data, filename="/etc/hostname")
+
+        assert len(captured) == 1
+        assert captured[0].parent == tmp_path
+        assert captured[0].name.endswith("hostname")
+
+    def test_empty_filename_falls_back_to_default(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(S, "STAGING_DIR", tmp_path)
+        import base64 as b64
+        from unittest.mock import patch
+
+        data = b64.b64encode(b"x").decode()
+        captured = []
+        def _cap(p):
+            captured.append(p)
+            return S.UploadResult(url="https://x/y", source=str(p), staged_from=None,
+                                  size_bytes=1, host_name=None, compress_factor=100, elapsed_ms=1)
+        with patch.object(S, "_upload_path", side_effect=_cap):
+            S.upload_image_from_base64(data, filename="")
+
+        assert len(captured) == 1
+        assert "image.png" in captured[0].name
+
+    def test_dotted_only_filename_falls_back(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(S, "STAGING_DIR", tmp_path)
+        import base64 as b64
+        from unittest.mock import patch
+
+        data = b64.b64encode(b"x").decode()
+        captured = []
+        def _cap(p):
+            captured.append(p)
+            return S.UploadResult(url="https://x/y", source=str(p), staged_from=None,
+                                  size_bytes=1, host_name=None, compress_factor=100, elapsed_ms=1)
+        with patch.object(S, "_upload_path", side_effect=_cap):
+            S.upload_image_from_base64(data, filename="...")
+
+        assert len(captured) == 1
+        # "..." loses all its leading dots → empty → fallback to "image.png"
+        assert "image.png" in captured[0].name
