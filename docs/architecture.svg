@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 780">
+  <style>
+    text{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;fill:#e2e8f0}
+    .dim{fill:#94a3b8}
+    .sub{fill:#64748b}
+    .mono{font-family:'SF Mono','Monaco',Menlo,monospace}
+    .layer-title{font-size:15px;font-weight:700}
+    .card-title{font-size:13px;font-weight:600}
+    .card-desc{font-size:10px}
+    .arrow-label{font-size:10px;font-family:'SF Mono','Monaco',monospace}
+  </style>
+  <defs>
+    <linearGradient id="client-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe"/>
+      <stop offset="100%" style="stop-color:#00f2fe"/>
+    </linearGradient>
+    <linearGradient id="mcp-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="upic-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#43e97b"/>
+      <stop offset="100%" style="stop-color:#38f9d7"/>
+    </linearGradient>
+    <linearGradient id="host-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fa709a"/>
+      <stop offset="100%" style="stop-color:#fee140"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="600" height="780" rx="12" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="300" y="30" text-anchor="middle" font-size="17" font-weight="700">upic-mcp  Architecture</text>
+  <text x="300" y="48" text-anchor="middle" class="dim" font-size="11">AI agent → MCP → uPic.app → image host (4 layers)</text>
+
+  <!-- Layer 1: MCP Client -->
+  <rect x="60" y="70" width="480" height="82" rx="10" fill="#1e293b" stroke="#4facfe" stroke-width="2"/>
+  <text x="80" y="92" class="layer-title" fill="#7dd3fc">1 · MCP Client</text>
+  <text x="530" y="92" text-anchor="end" class="sub mono" font-size="10">JSON-RPC over stdio</text>
+  <rect x="80" y="105" width="130" height="36" rx="6" fill="url(#client-grad)" opacity="0.15" stroke="#4facfe" stroke-width="1"/>
+  <text x="145" y="122" text-anchor="middle" class="card-title" fill="#7dd3fc">Kiro CLI</text>
+  <text x="145" y="135" text-anchor="middle" class="card-desc sub">kiro-cli chat</text>
+  <rect x="235" y="105" width="130" height="36" rx="6" fill="url(#client-grad)" opacity="0.15" stroke="#4facfe" stroke-width="1"/>
+  <text x="300" y="122" text-anchor="middle" class="card-title" fill="#7dd3fc">Claude Desktop</text>
+  <text x="300" y="135" text-anchor="middle" class="card-desc sub">macOS app</text>
+  <rect x="390" y="105" width="130" height="36" rx="6" fill="url(#client-grad)" opacity="0.15" stroke="#4facfe" stroke-width="1"/>
+  <text x="455" y="122" text-anchor="middle" class="card-title" fill="#7dd3fc">Cursor</text>
+  <text x="455" y="135" text-anchor="middle" class="card-desc sub">VS Code fork</text>
+
+  <!-- Arrow 1 -->
+  <line x1="300" y1="155" x2="300" y2="188" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="310" y="175" class="arrow-label" fill="#94a3b8">@upic/upload_image(path)</text>
+
+  <!-- Layer 2: upic-mcp -->
+  <rect x="60" y="195" width="480" height="170" rx="10" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+  <text x="80" y="217" class="layer-title" fill="#c4b5fd">2 · upic-mcp</text>
+  <text x="530" y="217" text-anchor="end" class="sub mono" font-size="10">server.py · FastMCP · ~340 LOC</text>
+
+  <!-- 5 tools row -->
+  <rect x="80" y="230" width="88" height="30" rx="5" fill="#2e1065" opacity="0.6" stroke="#a855f7" stroke-width="1"/>
+  <text x="124" y="249" text-anchor="middle" class="mono" font-size="10" fill="#d8b4fe">upload_image</text>
+  <rect x="174" y="230" width="108" height="30" rx="5" fill="#2e1065" opacity="0.6" stroke="#a855f7" stroke-width="1"/>
+  <text x="228" y="249" text-anchor="middle" class="mono" font-size="10" fill="#d8b4fe">upload_...base64</text>
+  <rect x="288" y="230" width="72" height="30" rx="5" fill="#2e1065" opacity="0.6" stroke="#a855f7" stroke-width="1"/>
+  <text x="324" y="249" text-anchor="middle" class="mono" font-size="10" fill="#d8b4fe">list_hosts</text>
+  <rect x="366" y="230" width="86" height="30" rx="5" fill="#2e1065" opacity="0.6" stroke="#a855f7" stroke-width="1"/>
+  <text x="409" y="249" text-anchor="middle" class="mono" font-size="10" fill="#d8b4fe">get_default</text>
+  <rect x="458" y="230" width="62" height="30" rx="5" fill="#2e1065" opacity="0.6" stroke="#a855f7" stroke-width="1"/>
+  <text x="489" y="249" text-anchor="middle" class="mono" font-size="10" fill="#d8b4fe">info</text>
+
+  <!-- Internal responsibilities -->
+  <rect x="80" y="275" width="135" height="75" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+  <text x="147" y="292" text-anchor="middle" class="card-title" fill="#c4b5fd">UserDefaults</text>
+  <text x="147" y="308" text-anchor="middle" class="card-desc dim">reader</text>
+  <text x="147" y="325" text-anchor="middle" class="card-desc sub">.plist → hosts +</text>
+  <text x="147" y="338" text-anchor="middle" class="card-desc sub">quality_factor</text>
+
+  <rect x="225" y="275" width="135" height="75" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+  <text x="292" y="292" text-anchor="middle" class="card-title" fill="#c4b5fd">Sandbox Path</text>
+  <text x="292" y="308" text-anchor="middle" class="card-desc dim">staging</text>
+  <text x="292" y="325" text-anchor="middle" class="card-desc sub">SHA-1 dedup →</text>
+  <text x="292" y="338" text-anchor="middle" class="card-desc sub">~/.upic-staging/</text>
+
+  <rect x="370" y="275" width="150" height="75" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+  <text x="445" y="292" text-anchor="middle" class="card-title" fill="#c4b5fd">subprocess</text>
+  <text x="445" y="308" text-anchor="middle" class="card-desc dim">invoker + parser</text>
+  <text x="445" y="325" text-anchor="middle" class="card-desc sub">stdout → structured</text>
+  <text x="445" y="338" text-anchor="middle" class="card-desc sub">JSON result</text>
+
+  <!-- Arrow 2 -->
+  <line x1="300" y1="370" x2="300" y2="403" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="310" y="390" class="arrow-label" fill="#94a3b8">subprocess.run(["uPic", "-u", path, "-o", "url"])</text>
+
+  <!-- Layer 3: uPic.app -->
+  <rect x="60" y="410" width="480" height="170" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+  <text x="80" y="432" class="layer-title" fill="#86efac">3 · uPic.app CLI (unmodified)</text>
+  <text x="530" y="432" text-anchor="end" class="sub mono" font-size="10">/Applications/uPic.app</text>
+
+  <rect x="80" y="445" width="108" height="32" rx="5" fill="#064e3b" opacity="0.7" stroke="#22c55e" stroke-width="1"/>
+  <text x="134" y="465" text-anchor="middle" class="card-desc" fill="#86efac">① read config</text>
+
+  <rect x="196" y="445" width="108" height="32" rx="5" fill="#064e3b" opacity="0.7" stroke="#22c55e" stroke-width="1"/>
+  <text x="250" y="465" text-anchor="middle" class="card-desc" fill="#86efac">② compress</text>
+
+  <rect x="312" y="445" width="108" height="32" rx="5" fill="#064e3b" opacity="0.7" stroke="#22c55e" stroke-width="1"/>
+  <text x="366" y="465" text-anchor="middle" class="card-desc" fill="#86efac">③ upload HTTPS</text>
+
+  <rect x="428" y="445" width="94" height="32" rx="5" fill="#064e3b" opacity="0.7" stroke="#22c55e" stroke-width="1"/>
+  <text x="475" y="465" text-anchor="middle" class="card-desc" fill="#86efac">④ print URL</text>
+
+  <!-- Compression detail -->
+  <rect x="80" y="492" width="210" height="78" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+  <text x="185" y="508" text-anchor="middle" class="card-title" fill="#86efac">BaseUploaderUtil</text>
+  <text x="185" y="524" text-anchor="middle" class="card-desc dim">compressImage()</text>
+  <text x="90" y="543" class="card-desc sub">PNG → libminipng (lossy palette)</text>
+  <text x="90" y="557" class="card-desc sub">JPG → NSBitmapImageRep</text>
+  <text x="90" y="567" class="card-desc" fill="#fbbf24" font-size="9">quality 1–100 (100 = off)</text>
+
+  <rect x="300" y="492" width="220" height="78" rx="6" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+  <text x="410" y="508" text-anchor="middle" class="card-title" fill="#86efac">BaseUploader.upload()</text>
+  <text x="410" y="524" text-anchor="middle" class="card-desc dim">12 adapter types</text>
+  <text x="310" y="543" class="card-desc sub">S3 · Qiniu · UPYUN · Aliyun</text>
+  <text x="310" y="557" class="card-desc sub">Tencent · Imgur · GitHub · Gitee</text>
+  <text x="310" y="571" class="card-desc sub">SMMS · Weibo · Baidu · custom</text>
+
+  <!-- Arrow 3 -->
+  <line x1="300" y1="585" x2="300" y2="618" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="310" y="605" class="arrow-label" fill="#94a3b8">HTTPS + auth</text>
+
+  <!-- Layer 4: Image Host -->
+  <rect x="60" y="625" width="480" height="115" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+  <text x="80" y="647" class="layer-title" fill="#fcd34d">4 · Image Host (chosen by UI default)</text>
+  <text x="530" y="647" text-anchor="end" class="sub mono" font-size="10">user config</text>
+
+  <rect x="80" y="662" width="100" height="32" rx="5" fill="#78350f" opacity="0.5" stroke="#f59e0b" stroke-width="1"/>
+  <text x="130" y="682" text-anchor="middle" class="card-desc" fill="#fcd34d">S3 / R2</text>
+  <rect x="186" y="662" width="100" height="32" rx="5" fill="#78350f" opacity="0.5" stroke="#f59e0b" stroke-width="1"/>
+  <text x="236" y="682" text-anchor="middle" class="card-desc" fill="#fcd34d">Qiniu KODO</text>
+  <rect x="292" y="662" width="100" height="32" rx="5" fill="#78350f" opacity="0.5" stroke="#f59e0b" stroke-width="1"/>
+  <text x="342" y="682" text-anchor="middle" class="card-desc" fill="#fcd34d">Imgur</text>
+  <rect x="398" y="662" width="122" height="32" rx="5" fill="#78350f" opacity="0.5" stroke="#f59e0b" stroke-width="1"/>
+  <text x="459" y="682" text-anchor="middle" class="card-desc" fill="#fcd34d">+ 9 more hosts</text>
+
+  <text x="300" y="717" text-anchor="middle" class="card-desc dim">returns stable CDN URL back up the chain</text>
+  <text x="300" y="732" text-anchor="middle" class="mono" font-size="11" fill="#fcd34d">→ https://img.aws.xin/uPic/...</text>
+
+  <!-- Footer -->
+  <text x="300" y="765" text-anchor="middle" class="sub" font-size="9">Zero modification to uPic source · UI settings inherited 1:1 via UserDefaults</text>
+</svg>

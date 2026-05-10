@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760">
+  <style>
+    text{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;fill:#e2e8f0}
+    .dim{fill:#94a3b8}
+    .sub{fill:#64748b}
+    .mono{font-family:'SF Mono','Monaco',Menlo,monospace}
+    .step-title{font-size:13px;font-weight:700}
+    .step-desc{font-size:11px}
+    .tiny{font-size:10px}
+  </style>
+  <defs>
+    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f43f5e"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </linearGradient>
+    <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="strokeWidth" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f43f5e"/>
+    </marker>
+  </defs>
+
+  <rect width="600" height="760" rx="12" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="300" y="30" text-anchor="middle" font-size="17" font-weight="700">Sandbox Path Workaround</text>
+  <text x="300" y="48" text-anchor="middle" class="dim" font-size="11">How upic-mcp bypasses uPic's sandbox whitelist safely</text>
+
+  <!-- Step 1: input -->
+  <rect x="60" y="72" width="480" height="52" rx="8" fill="#1e293b" stroke="#4facfe" stroke-width="2"/>
+  <text x="80" y="93" class="step-title" fill="#7dd3fc">① Input</text>
+  <text x="80" y="112" class="step-desc" fill="#e2e8f0">Agent calls </text>
+  <text x="140" y="112" class="mono step-desc" fill="#7dd3fc">upload_image(path="/tmp/foo.png")</text>
+
+  <!-- Arrow down -->
+  <line x1="300" y1="130" x2="300" y2="158" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-flow)"/>
+
+  <!-- Step 2: decision diamond -->
+  <polygon points="300,165 500,240 300,315 100,240" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+  <text x="300" y="212" text-anchor="middle" class="step-title" fill="#c4b5fd">② Does path resolve into a</text>
+  <text x="300" y="230" text-anchor="middle" class="step-title" fill="#c4b5fd">sandbox-whitelisted prefix?</text>
+  <text x="300" y="252" text-anchor="middle" class="mono tiny sub">$HOME · /Users · /Applications</text>
+  <text x="300" y="268" text-anchor="middle" class="mono tiny sub">/System · /opt · /Volumes · /cores</text>
+
+  <!-- YES branch (left) -->
+  <line x1="180" y1="272" x2="100" y2="340" stroke="#22c55e" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <rect x="60" y="255" width="44" height="22" rx="4" fill="#064e3b" stroke="#22c55e" stroke-width="1"/>
+  <text x="82" y="271" text-anchor="middle" class="mono tiny" fill="#86efac">YES</text>
+
+  <!-- NO branch (right) -->
+  <line x1="420" y1="272" x2="500" y2="340" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrow-red)"/>
+  <rect x="496" y="255" width="40" height="22" rx="4" fill="#7f1d1d" stroke="#f43f5e" stroke-width="1"/>
+  <text x="516" y="271" text-anchor="middle" class="mono tiny" fill="#fda4af">NO</text>
+
+  <!-- YES path: direct upload -->
+  <rect x="30" y="345" width="200" height="100" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+  <text x="130" y="367" text-anchor="middle" class="step-title" fill="#86efac">③a Direct upload</text>
+  <text x="130" y="388" text-anchor="middle" class="step-desc dim">path is safe to pass</text>
+  <text x="130" y="403" text-anchor="middle" class="step-desc dim">directly to uPic CLI</text>
+  <rect x="45" y="414" width="170" height="24" rx="4" fill="#064e3b"/>
+  <text x="130" y="431" text-anchor="middle" class="mono tiny" fill="#86efac">staged_from = null</text>
+
+  <!-- NO path: staging flow -->
+  <rect x="370" y="345" width="200" height="100" rx="8" fill="#1e293b" stroke="#f43f5e" stroke-width="2"/>
+  <text x="470" y="367" text-anchor="middle" class="step-title" fill="#fda4af">③b Needs staging</text>
+  <text x="470" y="388" text-anchor="middle" class="step-desc dim">uPic's sandbox cannot</text>
+  <text x="470" y="403" text-anchor="middle" class="step-desc dim">read this path directly</text>
+  <rect x="390" y="414" width="160" height="24" rx="4" fill="#7f1d1d"/>
+  <text x="470" y="431" text-anchor="middle" class="mono tiny" fill="#fda4af">isReadableFile → false</text>
+
+  <!-- Arrow to step 4 (from NO branch) -->
+  <line x1="470" y1="450" x2="470" y2="478" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+  <!-- Step 4: stage -->
+  <rect x="300" y="485" width="270" height="115" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+  <text x="320" y="507" class="step-title" fill="#fcd34d">④ Stage via content hash</text>
+  <text x="320" y="527" class="step-desc dim">SHA-1 of file contents → 8-char prefix</text>
+  <rect x="320" y="537" width="230" height="28" rx="4" fill="#0f172a"/>
+  <text x="330" y="556" class="mono tiny" fill="#fcd34d">~/.upic-staging/9e7d3e7d_foo.png</text>
+  <text x="320" y="582" class="step-desc sub">• Idempotent: same content → same staged file</text>
+  <text x="320" y="594" class="step-desc sub">• Dedupes re-uploads, zero duplication</text>
+
+  <!-- Arrow from direct path -->
+  <line x1="130" y1="445" x2="130" y2="625" stroke="#22c55e" stroke-width="2" marker-end="url(#arrow-green)"/>
+
+  <!-- Arrow from stage to merge -->
+  <line x1="470" y1="600" x2="470" y2="625" stroke="#64748b" stroke-width="2"/>
+  <line x1="470" y1="625" x2="300" y2="625" stroke="#64748b" stroke-width="2"/>
+  <line x1="300" y1="625" x2="300" y2="640" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-flow)"/>
+
+  <!-- Step 5: invoke -->
+  <rect x="60" y="645" width="480" height="58" rx="8" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+  <text x="80" y="668" class="step-title" fill="#c4b5fd">⑤ Invoke uPic CLI with the safe path</text>
+  <rect x="80" y="675" width="440" height="20" rx="3" fill="#0f172a"/>
+  <text x="90" y="690" class="mono tiny" fill="#e2e8f0">subprocess.run(["/Applications/uPic.app/.../uPic", "-u", safe_path, "-o", "url"])</text>
+
+  <!-- Final result bar -->
+  <rect x="60" y="715" width="480" height="32" rx="6" fill="url(#green)" opacity="0.2" stroke="#22c55e" stroke-width="1"/>
+  <text x="300" y="735" text-anchor="middle" class="mono" font-size="11" fill="#86efac">✓ Returns { url, staged_from, size_bytes, host, quality_factor, ... }</text>
+</svg>

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Three hand-drawn SVG architecture diagrams under `docs/`, rendered at 2× resolution and hosted on CDN:
+  - `architecture.svg` / `.png` — four-layer system architecture (MCP Client → upic-mcp → uPic.app CLI → Image Host) with all internal responsibilities and the 12 supported host types.
+  - `sandbox-flow.svg` / `.png` — sandbox-path workaround flowchart showing the whitelist check branching into direct upload or SHA-1 content-hash staging.
+  - `test-pyramid.svg` / `.png` — three-layer test pyramid visualizing 21 unit + 17 integration + 6 e2e tests, their runtimes, and the commands to run each tier.
+- README now embeds these diagrams as CDN images in place of the previous ASCII art, so they render correctly on GitHub, Notion, and any Markdown viewer.
+
+### Changed
+
+- README "How It Works" section: ASCII art replaced with `architecture.png`; sandbox workaround bullets replaced with `sandbox-flow.png` plus a one-paragraph summary.
+- README "Testing" section: table-only view augmented with `test-pyramid.png` for at-a-glance understanding.
+- Project layout table in README updated to reflect the new `docs/` directory.
+
 ## [0.1.0] — 2026-05-09
 
 Initial public release. Upload-only MVP. Tested end-to-end against the real uPic.app and a live S3/R2 host.

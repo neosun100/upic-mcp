@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 680">
+  <style>
+    text{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;fill:#e2e8f0}
+    .dim{fill:#94a3b8}
+    .sub{fill:#64748b}
+    .mono{font-family:'SF Mono','Monaco',Menlo,monospace}
+    .layer-title{font-size:15px;font-weight:700}
+    .layer-sub{font-size:11px}
+    .meta{font-size:10px}
+  </style>
+  <defs>
+    <linearGradient id="e2e-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f43f5e"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
+    </linearGradient>
+    <linearGradient id="int-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#667eea"/>
+    </linearGradient>
+    <linearGradient id="unit-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="600" height="680" rx="12" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="300" y="30" text-anchor="middle" font-size="17" font-weight="700">Three-Layer Test Pyramid</text>
+  <text x="300" y="48" text-anchor="middle" class="dim" font-size="11">44 tests · all passing · fast offline + opt-in real-upload</text>
+
+  <!-- E2E layer (top, narrowest) -->
+  <polygon points="220,80 380,80 400,160 200,160" fill="#1e293b" stroke="#f43f5e" stroke-width="2"/>
+  <rect x="222" y="82" width="156" height="76" fill="url(#e2e-grad)" opacity="0.2"/>
+  <text x="300" y="110" text-anchor="middle" class="layer-title" fill="#fda4af">E2E</text>
+  <text x="300" y="128" text-anchor="middle" class="mono layer-sub" fill="#fda4af">6 tests · ~15s</text>
+  <text x="300" y="146" text-anchor="middle" class="meta dim">real uPic + real CDN</text>
+
+  <!-- E2E side labels -->
+  <line x1="400" y1="120" x2="440" y2="120" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="450" y="112" class="meta" fill="#fda4af">⚠ hits network</text>
+  <text x="450" y="125" class="meta dim">opt-in via -m e2e</text>
+  <text x="450" y="138" class="meta dim">needs uPic installed</text>
+
+  <!-- Integration layer (middle) -->
+  <polygon points="170,170 430,170 460,280 140,280" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+  <rect x="172" y="172" width="256" height="106" fill="url(#int-grad)" opacity="0.2"/>
+  <text x="300" y="208" text-anchor="middle" class="layer-title" fill="#c4b5fd">Integration</text>
+  <text x="300" y="228" text-anchor="middle" class="mono layer-sub" fill="#c4b5fd">17 tests · ~0.3s</text>
+  <text x="300" y="248" text-anchor="middle" class="meta dim">subprocess + plist mocked</text>
+  <text x="300" y="264" text-anchor="middle" class="meta dim">full tool code path</text>
+
+  <!-- Integration side labels -->
+  <line x1="460" y1="225" x2="500" y2="225" stroke="#a855f7" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="510" y="217" class="meta" fill="#c4b5fd">✓ offline</text>
+  <text x="510" y="230" class="meta dim">deterministic</text>
+  <text x="510" y="243" class="meta dim">CI-friendly</text>
+
+  <!-- Unit layer (bottom, widest) -->
+  <polygon points="110,290 490,290 540,430 60,430" fill="#1e293b" stroke="#22c55e" stroke-width="2"/>
+  <rect x="112" y="292" width="376" height="136" fill="url(#unit-grad)" opacity="0.2"/>
+  <text x="300" y="330" text-anchor="middle" class="layer-title" fill="#86efac">Unit</text>
+  <text x="300" y="350" text-anchor="middle" class="mono layer-sub" fill="#86efac">21 tests · ~0.3s</text>
+  <text x="300" y="372" text-anchor="middle" class="meta dim">pure functions · zero I/O</text>
+  <text x="300" y="390" text-anchor="middle" class="meta dim">_extract_url · _parse_hosts</text>
+  <text x="300" y="407" text-anchor="middle" class="meta dim">_needs_staging · _result_to_dict</text>
+
+  <!-- Unit side labels -->
+  <line x1="540" y1="360" x2="575" y2="360" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="490" y="353" class="meta" fill="#86efac">✓ ≤1ms each</text>
+  <text x="490" y="368" class="meta dim">edge cases</text>
+  <text x="490" y="383" class="meta dim">secret redaction</text>
+
+  <!-- Numbers summary -->
+  <rect x="60" y="460" width="480" height="52" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="75" y="482" class="meta dim">TOTAL</text>
+  <text x="135" y="485" class="layer-title" fill="#e2e8f0">44</text>
+  <text x="165" y="482" class="meta dim">tests</text>
+
+  <text x="230" y="482" class="meta dim">DEFAULT</text>
+  <text x="290" y="485" class="layer-title" fill="#86efac">38</text>
+  <text x="320" y="482" class="meta dim">offline · 0.5s</text>
+
+  <text x="440" y="482" class="meta dim">E2E</text>
+  <text x="478" y="485" class="layer-title" fill="#fda4af">6</text>
+  <text x="498" y="482" class="meta dim">+ 15s</text>
+
+  <text x="75" y="503" class="meta sub">config in</text>
+  <text x="135" y="503" class="mono meta" fill="#94a3b8">pyproject.toml</text>
+  <text x="240" y="503" class="meta sub">→</text>
+  <text x="255" y="503" class="mono meta" fill="#94a3b8">addopts = "-ra -m 'not e2e'"</text>
+
+  <!-- Commands -->
+  <rect x="60" y="525" width="480" height="115" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="80" y="547" class="layer-title" fill="#e2e8f0">Run the tests</text>
+
+  <rect x="80" y="558" width="440" height="22" rx="3" fill="#0f172a"/>
+  <text x="90" y="574" class="mono meta" fill="#86efac">uv run pytest</text>
+  <text x="230" y="574" class="mono meta" fill="#64748b"># fast, offline, 38 tests</text>
+
+  <rect x="80" y="585" width="440" height="22" rx="3" fill="#0f172a"/>
+  <text x="90" y="601" class="mono meta" fill="#fda4af">uv run pytest -m e2e -v</text>
+  <text x="260" y="601" class="mono meta" fill="#64748b"># real uploads, 6 tests</text>
+
+  <rect x="80" y="612" width="440" height="22" rx="3" fill="#0f172a"/>
+  <text x="90" y="628" class="mono meta" fill="#c4b5fd">uv run pytest --override-ini="addopts=-ra" -v</text>
+  <text x="390" y="628" class="mono meta" fill="#64748b"># all 44</text>
+
+  <!-- Philosophy -->
+  <text x="300" y="662" text-anchor="middle" class="meta sub">Unit catches edge cases · Integration catches contract drift · E2E catches reality</text>
+</svg>

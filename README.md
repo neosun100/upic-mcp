@@ -124,47 +124,26 @@ The 41.6% size reduction is the compression effect of uPic's `quality=90` settin
 
 ## How It Works
 
-```
-┌────────────────────────────┐       ┌─────────────────────────────────┐
-│       MCP Client            │       │        upic-mcp (this repo)    │
-│  (Kiro / Claude / Cursor)   │◀─────▶│   • FastMCP stdio server       │
-│                             │ JSON  │   • 5 tools                    │
-│  @upic/upload_image(path)   │ RPC   │   • Sandbox-path staging       │
-└─────────────────────────────┘       │   • Reads uPic UserDefaults    │
-                                      └──────────────┬──────────────────┘
-                                                     │ subprocess
-                                                     ▼
-                                      ┌─────────────────────────────────┐
-                                      │    /Applications/uPic.app       │
-                                      │    uPic's own CLI binary        │
-                                      │    (unmodified)                 │
-                                      │                                 │
-                                      │  Upload pipeline:               │
-                                      │   1. Read UserDefaults          │
-                                      │      (default host, quality)    │
-                                      │   2. Compress via               │
-                                      │      BaseUploaderUtil           │
-                                      │      (libminipng / NSBitmap)    │
-                                      │   3. Upload to chosen host      │
-                                      │   4. Print URL to stdout        │
-                                      └──────────────┬──────────────────┘
-                                                     │ HTTPS
-                                                     ▼
-                                      ┌─────────────────────────────────┐
-                                      │   Image host (S3/Qiniu/Imgur/…) │
-                                      └─────────────────────────────────┘
-```
+<p align="center">
+  <img src="https://img.aws.xin/uPic/architecture.png" alt="upic-mcp 4-layer architecture: MCP Client → upic-mcp → uPic.app CLI → Image Host" style="width:100%;max-width:720px" />
+</p>
+
+Four layers, each with a clear single responsibility:
+
+1. **MCP Client** (Kiro / Claude Desktop / Cursor) sends `@upic/upload_image(path)` over JSON-RPC on stdio.
+2. **upic-mcp** (this project) reads uPic's `UserDefaults` plist, stages the path if it's outside the sandbox whitelist, then invokes uPic's CLI via `subprocess.run`.
+3. **uPic.app CLI** (untouched) reads the config, runs the file through `BaseUploaderUtil.compressImage` (PNG → `libminipng`; JPG → `NSBitmapImageRep`), picks the matching adapter from 12 host types (S3, Qiniu, Imgur, …), uploads over HTTPS, and prints the final URL.
+4. **Image Host** returns a stable CDN URL like `https://img.aws.xin/uPic/...` that flows back up the chain.
 
 ### Sandbox Workaround
 
 uPic is a Sandboxed app. Its CLI mode can only read files under paths for which it has valid Security-Scoped Bookmarks. Everything else returns `isReadableFile: false` and the upload silently no-ops.
 
-**This server's workaround:**
+<p align="center">
+  <img src="https://img.aws.xin/uPic/sandbox-flow.png" alt="Sandbox workaround flowchart: whitelist check → direct upload or SHA-1 content-hash staging" style="width:100%;max-width:720px" />
+</p>
 
-1. Check if the target path resolves to one of `[$HOME, /Users/, /Applications/, /System/, /opt/, /Volumes/, /cores/]`
-2. If yes, pass the path to uPic unchanged
-3. If no, compute SHA-1 of file contents, copy it to `~/.upic-staging/<sha1prefix>_<filename>`, then pass the staged path
-4. Staging is idempotent — re-uploading identical content reuses the existing staged file
+**This server's workaround in one paragraph:** resolve the caller's path, check it against `[$HOME, /Users/, /Applications/, /System/, /opt/, /Volumes/, /cores/]`. If it's on the whitelist, pass the path unchanged. If not, compute SHA-1 of file contents, copy it to `~/.upic-staging/<sha1prefix>_<filename>`, and hand the staged path to uPic. Staging is idempotent — re-uploading identical content reuses the existing file rather than creating duplicates.
 
 ## CLI Usage (uPic Built-in)
 
@@ -213,6 +192,10 @@ The `quality_factor` field in tool results maps to uPic's **"Compress images bef
 
 ## Testing
 
+<p align="center">
+  <img src="https://img.aws.xin/uPic/test-pyramid.png" alt="Three-layer test pyramid: 21 unit + 17 integration + 6 e2e = 44 tests total" style="width:100%;max-width:720px" />
+</p>
+
 ```bash
 # Fast, offline, runs in ~0.5s
 uv run pytest                      # 38 passed (6 e2e deselected)
@@ -243,6 +226,13 @@ upic-mcp/
 │   ├── test_unit.py         # Pure-function unit tests
 │   ├── test_integration.py  # Tool-level tests with subprocess mocked
 │   └── test_e2e.py          # End-to-end real-upload tests
+├── docs/                   # Architecture diagrams (SVG sources + PNG renders)
+│   ├── architecture.svg     # 4-layer system architecture
+│   ├── architecture.png
+│   ├── sandbox-flow.svg     # Sandbox path workaround flowchart
+│   ├── sandbox-flow.png
+│   ├── test-pyramid.svg     # Three-layer test pyramid
+│   └── test-pyramid.png
 ├── pyproject.toml          # uv-managed, with pytest markers
 ├── uv.lock
 ├── README.md
